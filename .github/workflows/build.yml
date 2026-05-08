@@ -105,5 +105,7 @@ jobs:
 
     - name: Submit for Review
       run: |
-        pip3 install pyjwt requests cryptography
+        python3 -m venv /tmp/venv
+        source /tmp/venv/bin/activate
+        pip install pyjwt requests cryptography
         python3 scripts/submit.py $BUILD_NUM
