@@ -132,6 +132,66 @@ if not versions['data']:
 
 version_id = versions['data'][0]['id']
 
+# Set description, keywords, supportUrl, marketingUrl on version localizations
+DESCRIPTION_JA = """サイバーそろばん - 未来の計算体験
+
+ネオンが光るHUDディスプレイの中で、美しく輝く駒を弾いて計算する。映画TRONの世界に入り込んだような、近未来そろばんアプリ。
+
+特徴:
+- スキャンラインとネオン発光のサイバーパンクUI
+- 硬質に光る宝石のような駒
+- 電子クリック音とガラス高音のサウンド
+- 13桁の本格そろばん計算
+- 横向き専用の没入体験"""
+
+DESCRIPTION_EN = """Cyber Soroban - A Futuristic Abacus
+
+Flick luminous beads on a neon HUD display. A futuristic abacus app inspired by the world of TRON.
+
+Features:
+- Cyberpunk UI with scanlines and neon glow
+- Gem-like hard-edged luminous beads
+- Electronic click and glass chime sounds
+- Full 13-column abacus calculation
+- Landscape-only immersive experience"""
+
+KEYWORDS_JA = 'そろばん,計算,サイバー,ネオン,暗算,珠算,TRON,教育,数学,abacus'
+KEYWORDS_EN = 'soroban,abacus,calculator,cyber,neon,math,TRON,education,arithmetic,beads'
+SUPPORT_URL = 'https://snarfnet.github.io/'
+
+ver_locs = api('GET', f'/appStoreVersions/{version_id}/appStoreVersionLocalizations')
+for vl in ver_locs.get('data', []):
+    vl_id = vl['id']
+    locale = vl['attributes']['locale']
+    is_ja = locale.startswith('ja')
+    attrs = {
+        'description': DESCRIPTION_JA if is_ja else DESCRIPTION_EN,
+        'keywords': KEYWORDS_JA if is_ja else KEYWORDS_EN,
+        'supportUrl': SUPPORT_URL,
+        'marketingUrl': MARKETING_URL,
+    }
+    r = requests.patch(f'https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/{vl_id}',
+                       headers=headers(), json={
+        'data': {'type': 'appStoreVersionLocalizations', 'id': vl_id, 'attributes': attrs}
+    })
+    if r.ok:
+        print(f'  Set description/keywords for {locale}')
+    else:
+        print(f'  Failed setting localization for {locale}: {r.status_code} {r.text[:200]}')
+
+# If only ja locale exists, add en-US
+locale_codes = [vl['attributes']['locale'] for vl in ver_locs.get('data', [])]
+if 'en-US' not in locale_codes:
+    r = requests.post('https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations',
+                      headers=headers(), json={
+        'data': {'type': 'appStoreVersionLocalizations',
+                 'attributes': {'locale': 'en-US', 'description': DESCRIPTION_EN,
+                                'keywords': KEYWORDS_EN, 'supportUrl': SUPPORT_URL, 'marketingUrl': MARKETING_URL},
+                 'relationships': {'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}}}
+    })
+    if r.ok:
+        print('  Added en-US localization')
+
 # whatsNew (skip for initial v1.0 release)
 if VERSION_STRING != '1.0':
     ver_locs = api('GET', f'/appStoreVersions/{version_id}/appStoreVersionLocalizations')
