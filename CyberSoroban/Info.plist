@@ -18,7 +18,7 @@
     <key>NSUserTrackingUsageDescription</key>
     <string>Personalized ads require your permission</string>
     <key>GADApplicationIdentifier</key>
-    <string>ca-app-pub-9404799280370656~PLACEHOLDER</string>
+    <string>ca-app-pub-9404799280370656~6603754174</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
 </dict>

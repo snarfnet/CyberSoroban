@@ -58,7 +58,7 @@ struct ContentView: View {
                     Spacer()
 
                     // Ad banner
-                    BannerAdView(adUnitID: "ca-app-pub-9404799280370656/PLACEHOLDER")
+                    BannerAdView(adUnitID: "ca-app-pub-9404799280370656/6346173268")
                         .frame(width: 320, height: 50)
                         .padding(.bottom, 4)
                 }
