@@ -364,6 +364,16 @@ for _ in range(40):
 else:
     print('Warning: screenshot processing timed out, attempting submit anyway')
 
+# Check if already in review — skip submission if so
+existing_reviews = requests.get(f'https://api.appstoreconnect.apple.com/v1/apps/{APP_ID}/reviewSubmissions',
+                                headers=headers())
+active_states = ('WAITING_FOR_REVIEW', 'IN_REVIEW')
+if existing_reviews.ok:
+    for er in existing_reviews.json().get('data', []):
+        if er['attributes'].get('state', '') in active_states:
+            print(f'Already in review ({er["attributes"]["state"]}), skipping submission.')
+            sys.exit(0)
+
 # Link build to version
 api('PATCH', f'/appStoreVersions/{version_id}', json={
     'data': {'type': 'appStoreVersions', 'id': version_id,
