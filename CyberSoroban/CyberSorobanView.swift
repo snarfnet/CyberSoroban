@@ -6,33 +6,65 @@ struct CyberSorobanView: View {
     let frameWidth: CGFloat
 
     private let heavenRatio: CGFloat = 0.25
-    private let dividerHeight: CGFloat = 4
+    private let dividerHeight: CGFloat = 8
+    private let contentInset: CGFloat = 16
 
-    private var colWidth: CGFloat { frameWidth / CGFloat(model.columnCount) }
-    private var beadWidth: CGFloat { colWidth * 0.78 }
-    private var heavenHeight: CGFloat { frameHeight * heavenRatio }
-    private var earthHeight: CGFloat { frameHeight * (1 - heavenRatio) - dividerHeight }
-    private var beadHeight: CGFloat { min(earthHeight / 5.5, colWidth * 0.55) }
+    private var usableWidth: CGFloat { max(1, frameWidth - contentInset * 2) }
+    private var usableHeight: CGFloat { max(1, frameHeight - contentInset * 2) }
+    private var colWidth: CGFloat { usableWidth / CGFloat(model.columnCount) }
+    private var beadWidth: CGFloat { colWidth * 0.74 }
+    private var heavenHeight: CGFloat { usableHeight * heavenRatio }
+    private var earthHeight: CGFloat { usableHeight * (1 - heavenRatio) - dividerHeight }
+    private var beadHeight: CGFloat { min(earthHeight / 5.6, colWidth * 0.58) }
 
     var body: some View {
         ZStack {
-            // Frame outer glow
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            CyberTheme.panelBlack.opacity(0.96),
+                            CyberTheme.voidBlack.opacity(0.92),
+                            CyberTheme.panelBlack.opacity(0.86)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .strokeBorder(CyberTheme.electricCyan.opacity(0.28), lineWidth: 1)
+                }
+                .shadow(color: CyberTheme.electricCyan.opacity(0.35), radius: 28)
+                .shadow(color: CyberTheme.warningOrange.opacity(0.16), radius: 22)
+
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(
                     LinearGradient(
-                        colors: [CyberTheme.frameGlow.opacity(0.8), CyberTheme.frameGlow.opacity(0.3)],
-                        startPoint: .top, endPoint: .bottom
+                        colors: [
+                            CyberTheme.electricCyan.opacity(0.98),
+                            CyberTheme.neonMint.opacity(0.75),
+                            CyberTheme.warningOrange.opacity(0.46),
+                            CyberTheme.electricCyan.opacity(0.88)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     ),
-                    lineWidth: 2
+                    lineWidth: 3
                 )
-                .shadow(color: CyberTheme.frameGlow.opacity(0.5), radius: 10)
+                .padding(9)
+                .shadow(color: CyberTheme.electricCyan.opacity(0.8), radius: 16)
 
-            // Frame inner fill
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.black.opacity(0.7))
+            VStack {
+                terminalRail
+                Spacer()
+                terminalRail
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 14)
+            .allowsHitTesting(false)
 
             VStack(spacing: 0) {
-                // Heaven section
                 HStack(spacing: 0) {
                     ForEach(0..<model.columnCount, id: \.self) { col in
                         heavenColumn(col: col)
@@ -40,10 +72,8 @@ struct CyberSorobanView: View {
                     }
                 }
 
-                // Divider beam
                 dividerBar
 
-                // Earth section
                 HStack(spacing: 0) {
                     ForEach(0..<model.columnCount, id: \.self) { col in
                         earthColumn(col: col)
@@ -51,31 +81,35 @@ struct CyberSorobanView: View {
                     }
                 }
             }
+            .padding(contentInset)
 
-            // Rod beams (vertical lines through each column)
             HStack(spacing: 0) {
                 ForEach(0..<model.columnCount, id: \.self) { col in
                     ZStack {
-                        // Rod glow
                         Rectangle()
                             .fill(
                                 LinearGradient(
-                                    colors: [CyberTheme.rodBeam.opacity(0.05), CyberTheme.rodBeam.opacity(0.15), CyberTheme.rodBeam.opacity(0.05)],
+                                    colors: [
+                                        CyberTheme.rodBeam.opacity(0.03),
+                                        CyberTheme.rodBeam.opacity(0.28),
+                                        CyberTheme.rodBeam.opacity(0.03)
+                                    ],
                                     startPoint: .top, endPoint: .bottom
                                 )
                             )
-                            .frame(width: 3)
-                        // Rod core
+                            .frame(width: 5)
+                            .blur(radius: 1.5)
                         Rectangle()
-                            .fill(CyberTheme.rodBeam.opacity(0.3))
+                            .fill(CyberTheme.rodBeam.opacity(0.48))
                             .frame(width: 1)
+                            .shadow(color: CyberTheme.rodBeam.opacity(0.85), radius: 4)
                     }
                     .frame(width: colWidth)
                 }
             }
+            .padding(contentInset)
             .allowsHitTesting(false)
 
-            // Column value display at top
             HStack(spacing: 0) {
                 ForEach(0..<model.columnCount, id: \.self) { col in
                     Text("\(model.columnValue(col))")
@@ -86,7 +120,6 @@ struct CyberSorobanView: View {
             }
             .offset(y: -frameHeight / 2 - 12)
 
-            // Digit place markers
             HStack(spacing: 0) {
                 ForEach(0..<model.columnCount, id: \.self) { col in
                     let place = model.columnCount - 1 - col
@@ -100,9 +133,20 @@ struct CyberSorobanView: View {
                     .frame(width: colWidth)
                 }
             }
-            .offset(y: heavenHeight - frameHeight / 2 - 2)
+            .offset(y: heavenHeight - frameHeight / 2 + 2)
         }
         .frame(width: frameWidth, height: frameHeight)
+    }
+
+    private var terminalRail: some View {
+        HStack(spacing: 7) {
+            ForEach(0..<9, id: \.self) { index in
+                Capsule()
+                    .fill(index == 4 ? CyberTheme.warningOrange.opacity(0.86) : CyberTheme.electricCyan.opacity(0.42))
+                    .frame(width: index == 4 ? 46 : 22, height: 3)
+                    .shadow(color: index == 4 ? CyberTheme.warningOrange : CyberTheme.electricCyan, radius: 6)
+            }
+        }
     }
 
     private func heavenColumn(col: Int) -> some View {
@@ -123,8 +167,8 @@ struct CyberSorobanView: View {
     }
 
     private func earthColumn(col: Int) -> some View {
-        let activeCount = model.earthBeads[col]
-        let gemColor = CyberTheme.gemColors[col % CyberTheme.gemColors.count]
+                let activeCount = model.earthBeads[col]
+                let gemColor = CyberTheme.gemColors[col % CyberTheme.gemColors.count]
 
         return ZStack {
             ForEach(0..<4, id: \.self) { i in
@@ -151,15 +195,21 @@ struct CyberSorobanView: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [CyberTheme.dividerGlow.opacity(0.1), CyberTheme.dividerGlow.opacity(0.6), CyberTheme.dividerGlow.opacity(0.1)],
+                        colors: [
+                            CyberTheme.warningOrange.opacity(0.1),
+                            CyberTheme.dividerGlow.opacity(0.85),
+                            CyberTheme.electricCyan.opacity(0.95),
+                            CyberTheme.dividerGlow.opacity(0.85),
+                            CyberTheme.warningOrange.opacity(0.1)
+                        ],
                         startPoint: .leading, endPoint: .trailing
                     )
                 )
                 .frame(height: dividerHeight)
             Rectangle()
-                .fill(CyberTheme.dividerGlow.opacity(0.9))
-                .frame(height: 1)
-                .shadow(color: CyberTheme.dividerGlow, radius: 5)
+                .fill(.white.opacity(0.72))
+                .frame(height: 1.5)
+                .shadow(color: CyberTheme.dividerGlow, radius: 9)
         }
     }
 }

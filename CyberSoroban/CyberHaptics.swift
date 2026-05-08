@@ -8,17 +8,24 @@ enum CyberHaptics {
         return gen
     }()
 
-    private static var synthesizer: AVAudioEngine?
-    private static var playerNode: AVAudioPlayerNode?
-
     static func beadClick() {
         feedbackGenerator.impactOccurred()
         feedbackGenerator.prepare()
-        playClickSound()
+        playCyberSound(kind: .bead)
     }
 
-    private static func playClickSound() {
-        // Short cyber click using AudioEngine
+    static func resetPulse() {
+        feedbackGenerator.impactOccurred(intensity: 0.85)
+        feedbackGenerator.prepare()
+        playCyberSound(kind: .reset)
+    }
+
+    private enum SoundKind {
+        case bead
+        case reset
+    }
+
+    private static func playCyberSound(kind: SoundKind) {
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 let engine = AVAudioEngine()
@@ -26,7 +33,7 @@ enum CyberHaptics {
                 engine.attach(player)
 
                 let sampleRate: Double = 44100
-                let duration: Double = 0.06
+                let duration: Double = kind == .bead ? 0.095 : 0.18
                 let frameCount = AVAudioFrameCount(sampleRate * duration)
 
                 guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
@@ -35,14 +42,29 @@ enum CyberHaptics {
                 buffer.frameLength = frameCount
                 guard let data = buffer.floatChannelData?[0] else { return }
 
-                // Cyber click: short high-frequency burst with decay
                 for i in 0..<Int(frameCount) {
                     let t = Double(i) / sampleRate
-                    let envelope = exp(-t * 80) // fast decay
-                    let freq1 = 2400.0  // high metallic
-                    let freq2 = 3800.0  // shimmer
-                    let signal = sin(2 * .pi * freq1 * t) * 0.5 + sin(2 * .pi * freq2 * t) * 0.3
-                    data[i] = Float(signal * envelope * 0.15)
+                    let signal: Double
+                    let envelope: Double
+
+                    switch kind {
+                    case .bead:
+                        let chirp = 1850.0 + 900.0 * exp(-t * 36)
+                        let tick = sin(2 * .pi * chirp * t) * 0.45
+                        let glass = sin(2 * .pi * 4200.0 * t) * 0.18
+                        let sub = sin(2 * .pi * 130.0 * t) * 0.12
+                        envelope = exp(-t * 42)
+                        signal = (tick + glass + sub) * envelope
+                    case .reset:
+                        let sweep = 130.0 + 760.0 * min(1.0, t / duration)
+                        let core = sin(2 * .pi * sweep * t) * 0.38
+                        let shimmer = sin(2 * .pi * 2600.0 * t) * 0.12
+                        let attack = min(1.0, t / 0.025)
+                        envelope = attack * exp(-t * 7.0)
+                        signal = (core + shimmer) * envelope
+                    }
+
+                    data[i] = Float(signal * 0.18)
                 }
 
                 engine.connect(player, to: engine.mainMixerNode, format: format)
@@ -53,7 +75,7 @@ enum CyberHaptics {
                 Thread.sleep(forTimeInterval: duration + 0.05)
                 engine.stop()
             } catch {
-                // Silent fail
+                // Audio is a cosmetic layer. Haptics still carry the interaction if playback fails.
             }
         }
     }
