@@ -55,13 +55,16 @@ else:
     print('Timed out waiting for build')
     sys.exit(1)
 
-# Export compliance
+# Export compliance (409 = already set, OK)
 r = requests.patch(f'https://api.appstoreconnect.apple.com/v1/builds/{build_id}',
                    headers=headers(), json={
     'data': {'type': 'builds', 'id': build_id,
              'attributes': {'usesNonExemptEncryption': False}}
 })
 print(f'Export compliance: {r.status_code}')
+if not r.ok and r.status_code != 409:
+    print(f'  Error: {r.text[:300]}')
+    sys.exit(1)
 
 # contentRightsDeclaration
 api('PATCH', f'/apps/{APP_ID}', json={
@@ -129,15 +132,20 @@ if not versions['data']:
 
 version_id = versions['data'][0]['id']
 
-# whatsNew
-ver_locs = api('GET', f'/appStoreVersions/{version_id}/appStoreVersionLocalizations')
-for vl in ver_locs.get('data', []):
-    vl_id = vl['id']
-    api('PATCH', f'/appStoreVersionLocalizations/{vl_id}', json={
-        'data': {'type': 'appStoreVersionLocalizations', 'id': vl_id,
-                 'attributes': {'whatsNew': WHATS_NEW}}
-    })
-    print(f'  Set whatsNew for {vl["attributes"]["locale"]}')
+# whatsNew (skip for initial v1.0 release)
+if VERSION_STRING != '1.0':
+    ver_locs = api('GET', f'/appStoreVersions/{version_id}/appStoreVersionLocalizations')
+    for vl in ver_locs.get('data', []):
+        vl_id = vl['id']
+        r = requests.patch(f'https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/{vl_id}',
+                           headers=headers(), json={
+            'data': {'type': 'appStoreVersionLocalizations', 'id': vl_id,
+                     'attributes': {'whatsNew': WHATS_NEW}}
+        })
+        if r.ok:
+            print(f'  Set whatsNew for {vl["attributes"]["locale"]}')
+        else:
+            print(f'  whatsNew skipped for {vl["attributes"]["locale"]}: {r.status_code}')
 
 # Review details
 rd_attrs = {**REVIEW_CONTACT, 'demoAccountRequired': False, 'demoAccountName': '', 'demoAccountPassword': ''}
