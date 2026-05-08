@@ -147,7 +147,7 @@ if existing_reviews.ok:
     canceled = False
     for er in existing_reviews.json().get('data', []):
         er_state = er['attributes'].get('state', '')
-        if er_state in ('WAITING_FOR_REVIEW', 'IN_REVIEW', 'READY_FOR_REVIEW', 'UNRESOLVED_ISSUES'):
+        if er_state in ('UNRESOLVED_ISSUES',):
             print(f'  Cancelling review {er["id"]} ({er_state})')
             requests.patch(f'https://api.appstoreconnect.apple.com/v1/reviewSubmissions/{er["id"]}',
                           headers=headers(), json={
