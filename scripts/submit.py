@@ -86,18 +86,59 @@ for info in app_infos.get('data', []):
         if r.ok:
             print(f'  Updated privacyPolicyUrl for {loc_id}')
 
-# ageRating - advertising true
+# ageRating - full declaration
+AGE_RATING_ATTRS = {
+    # Boolean fields
+    'messagingAndChat': False, 'gambling': False, 'parentalControls': False,
+    'advertising': True, 'ageAssurance': False, 'userGeneratedContent': False,
+    'healthOrWellnessTopics': False, 'unrestrictedWebAccess': False, 'lootBox': False,
+    # String enum fields (NONE / INFREQUENT_OR_MILD / FREQUENT_OR_INTENSE)
+    'sexualContentOrNudity': 'NONE', 'horrorOrFearThemes': 'NONE',
+    'violenceCartoonOrFantasy': 'NONE', 'violenceRealistic': 'NONE',
+    'medicalOrTreatmentInformation': 'NONE', 'contests': 'NONE',
+    'alcoholTobaccoOrDrugUseOrReferences': 'NONE', 'matureOrSuggestiveThemes': 'NONE',
+    'violenceRealisticProlongedGraphicOrSadistic': 'NONE',
+    'sexualContentGraphicAndNudity': 'NONE', 'profanityOrCrudeHumor': 'NONE',
+    'gamblingSimulated': 'NONE', 'gunsOrOtherWeapons': 'NONE',
+}
 for info in app_infos.get('data', []):
     r2 = requests.get(f'https://api.appstoreconnect.apple.com/v1/appInfos/{info["id"]}/ageRatingDeclaration',
                       headers=headers())
     if r2.ok and r2.json().get('data'):
         ard_id = r2.json()['data']['id']
-        requests.patch(f'https://api.appstoreconnect.apple.com/v1/ageRatingDeclarations/{ard_id}',
+        r3 = requests.patch(f'https://api.appstoreconnect.apple.com/v1/ageRatingDeclarations/{ard_id}',
                       headers=headers(), json={
             'data': {'type': 'ageRatingDeclarations', 'id': ard_id,
-                     'attributes': {'advertising': True}}
+                     'attributes': AGE_RATING_ATTRS}
         })
-        print(f'  Set advertising=true for {ard_id}')
+        print(f'  Age rating: {r3.status_code} for {ard_id}')
+
+# Primary category (Education)
+for info in app_infos.get('data', []):
+    r_cat = requests.patch(f'https://api.appstoreconnect.apple.com/v1/appInfos/{info["id"]}',
+                           headers=headers(), json={
+        'data': {'type': 'appInfos', 'id': info['id'],
+                 'relationships': {'primaryCategory': {'data': {'type': 'appCategories', 'id': 'EDUCATION'}}}}
+    })
+    print(f'  Category: {r_cat.status_code}')
+
+# Price (free)
+r_pp = requests.get(f'https://api.appstoreconnect.apple.com/v1/apps/{APP_ID}/appPricePoints?filter[territory]=USA&limit=1',
+                    headers=headers())
+if r_pp.ok and r_pp.json().get('data'):
+    free_pp = r_pp.json()['data'][0]['id']
+    r_price = requests.post('https://api.appstoreconnect.apple.com/v1/appPriceSchedules',
+                            headers=headers(), json={
+        'data': {'type': 'appPriceSchedules',
+                 'relationships': {
+                     'app': {'data': {'type': 'apps', 'id': APP_ID}},
+                     'baseTerritory': {'data': {'type': 'territories', 'id': 'USA'}},
+                     'manualPrices': {'data': [{'type': 'appPrices', 'id': '${price1}'}]}
+                 }},
+        'included': [{'type': 'appPrices', 'id': '${price1}',
+                      'relationships': {'appPricePoint': {'data': {'type': 'appPricePoints', 'id': free_pp}}}}]
+    })
+    print(f'  Price: {r_price.status_code}')
 
 # Cancel existing review submissions
 existing_reviews = requests.get(f'https://api.appstoreconnect.apple.com/v1/apps/{APP_ID}/reviewSubmissions',
@@ -131,6 +172,14 @@ if not versions['data']:
     versions = {'data': [new_ver['data']]}
 
 version_id = versions['data'][0]['id']
+
+# Copyright
+r_cr = requests.patch(f'https://api.appstoreconnect.apple.com/v1/appStoreVersions/{version_id}',
+                      headers=headers(), json={
+    'data': {'type': 'appStoreVersions', 'id': version_id,
+             'attributes': {'copyright': '2026 tokyonasu'}}
+})
+print(f'Copyright: {r_cr.status_code}')
 
 # Set description, keywords, supportUrl, marketingUrl on version localizations
 DESCRIPTION_JA = """サイバーそろばん - 未来の計算体験
